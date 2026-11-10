@@ -73,7 +73,7 @@ button:active{transform:translateY(2px)}
 <button class="alt" id="bStore">Store</button>
 <button class="alt" id="bArmy">Skin</button>
 <button class="alt" id="bHow">How to Play</button>
-<p id="how" style="display:none;max-width:440px;line-height:1.7">Tap one of your units, tap a highlighted tile to move. Each unit moves once and acts once per turn. Tap a tile to walk there by the shortest path, or press and drag from a unit to draw its own path; the arrow stays until you click it to confirm (click elsewhere to cancel). Units attack only with their Skill: press Skill, then tap a red square (the percent shows how much damage lands). Tap your barracks to spawn a unit within 1 tile, paid with money; you earn $10 per turn plus $5 per flag you hold. Infantry can capture enemy outposts next to them, which uses that unit's movement for the turn. Outposts heal nearby allies with Supply Cargo. Right-click and drag (or drag empty ground) to pan big maps. Press End Turn when done. Win by capturing or destroying every enemy outpost, or by wiping out the enemy. Fog of war hides enemy units until one of your units sees them (sight is its range plus 2), but structures are always visible. Units in forests are only spotted from 1 tile away. Hills and bunkers are infantry only, and a unit on high ground can shoot down but never up.</p>
+<p id="how" style="display:none;max-width:440px;line-height:1.7">Tap one of your units, tap a highlighted tile to move. Each unit moves once and acts once per turn. Tap a tile to walk there by the shortest path, or press and drag from a unit to draw its own path; the arrow stays until you click it to confirm (click elsewhere to cancel). Units attack only with their Skill: press Skill, then tap a red square (the number shows predicted damage). Tap your barracks to spawn a unit on a neighboring tile, paid with money; you earn $10 per turn plus $5 per outpost you hold. Select an infantry unit to outline an adjacent enemy outpost in yellow, then click the outpost to capture it. Capturing changes ownership but does not move the unit, and uses that unit's movement for the turn. Outposts heal nearby allies with Supply Cargo. Right-click and drag (or drag empty ground) to pan big maps. Press End Turn when done. Capture or destroy every enemy outpost to win; destroying enemy units alone is not enough. Fog of war hides enemy units until one of your units sees them (sight is its range plus 2), but structures are always visible. Units in forests are only spotted from 1 tile away. Hills and bunkers are infantry only, and a unit on high ground can shoot down but never up.</p>
 </section>
 
 <section class="screen" id="select">
@@ -119,9 +119,11 @@ const LV=[
 {n:'Brick Road',m:['..........','...#..F...','...#......','......#...','...F..#...','..........'],me:'rrts',en:'rrs'},
 {n:'Obby Ruins',m:['..........','..#...#...','....F.....','.....F....','...#...#..','..........'],me:'rtks',en:'rtrk'},
 {n:'Lava Lobby',m:['....#.....','.F....#...','..#.......','.......#..','...F..#...','....#.....'],me:'rrtks',en:'rttks'},
-{n:'Admin Tower',m:['...#......','.F.#..#.F.','..........','..........','.F.#..#.F.','...#......'],me:'rrttks',en:'tttrkrs',boss:1}];
-let save={pick:0,done:0,stars:[0,0,0,0,0]};
+{n:'Admin Tower',m:['...#......','.F.#..#.F.','..........','..........','.F.#..#.F.','...#......'],me:'rrttks',en:'tttrkrs',boss:1},
+{n:'Zero Zone',m:['..........','..........','..........','.......F..','..........','..........'],h:['0000000000','0000000000','0000000000','0000000000','0000000000','0000000000'],me:'r',en:'',test:true}];
+let save={pick:0,done:0,stars:[0,0,0,0,0,0]};
 try{const s=JSON.parse(localStorage.getItem('nic'));if(s)save=Object.assign(save,s)}catch(e){}
+if(!Array.isArray(save.stars))save.stars=[];while(save.stars.length<LV.length)save.stars.push(0);
 const store=()=>{try{localStorage.setItem('nic',JSON.stringify(save))}catch(e){}};
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));if(id==='select')drawSel();if(id==='campaign')drawCamp();live=id==='game'}
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
@@ -141,8 +143,8 @@ function drawSel(){const b=$('#armies');b.innerHTML='';AR.forEach((a,i)=>{const 
  unit(g,35,75,'r','p',1);unit(g,80,80,'t','p',1);unit(g,125,75,'k','p',1);
  d.onclick=()=>{save.pick=i;drawSel()};b.appendChild(d)})}
 function drawCamp(){$('#who').textContent='Army: '+AR[save.pick].n;const b=$('#lvls');b.innerHTML='';
- LV.forEach((l,i)=>{const k=document.createElement('button');const lock=i>save.done;k.className='lvl'+(lock?' lock':'');
- k.innerHTML='<div class="n">'+(l.boss?'BOSS':i+1)+'</div>'+l.n+'<small>'+l.en.length+' enemy units</small><div class="stars">'+(lock?'Locked':'★'.repeat(save.stars[i])+'☆'.repeat(3-save.stars[i]))+'</div>';
+ LV.forEach((l,i)=>{const k=document.createElement('button');const lock=i>save.done&&!l.test;k.className='lvl'+(lock?' lock':'');
+ k.innerHTML='<div class="n">'+(l.test?'TEST':l.boss?'BOSS':i+1)+'</div>'+l.n+(l.test?'<small>Test map · 1 enemy outpost</small>':'')+'<div class="stars">'+(lock?'Locked':'★'.repeat(save.stars[i])+'☆'.repeat(3-save.stars[i]))+'</div>';
  k.disabled=lock;k.onclick=()=>start(i);b.appendChild(k)})}
 
 /* game */
@@ -184,7 +186,7 @@ function ai(e){const rc=bfs(e);rc[key(e.x,e.y)]=1;const P=units.filter(u=>u.team
 function cap(team){flags.forEach(f=>{const u=at(f.x,f.y);if(u&&u.team===team)f.o=team})}
 function check(){ui(turn==='p'?'Your turn':'Enemy turn');const P=units.filter(u=>u.team==='p').length,E=units.filter(u=>u.team==='e').length;
  if(!E||(flags.length&&flags.every(f=>f.o==='p')))return fin(true);if(!P||(flags.length&&flags.every(f=>f.o==='e')))return fin(false);return false}
-function fin(win){over=true;const s=win?(P3()):0;if(win){save.stars[lvl]=Math.max(save.stars[lvl],s);save.done=Math.max(save.done,Math.min(lvl+1,LV.length-1));store()}
+function fin(win){over=true;const s=win?(P3()):0;if(win){save.stars[lvl]=Math.max(save.stars[lvl],s);if(!LV[lvl].test)save.done=Math.max(save.done,Math.min(lvl+1,LV.length-1));store()}
  $('#oT').textContent=win?(lvl===LV.length-1?'Campaign cleared!':'Victory!'):'Defeat';$('#oS').textContent=win?'★'.repeat(s)+'☆'.repeat(3-s):'';
  $('#oA').style.display=win&&lvl<LV.length-1?'':'none';ui('Battle over');setTimeout(()=>$('#over').classList.add('on'),600);return true}
 function P3(){const a=units.filter(u=>u.team==='p').length;return a===start0?3:a>=start0/2?2:1}
@@ -436,7 +438,7 @@ drawLobby=function(){
  $('#cnt').textContent='Loadout '+save.loadout.length+'/4 · Battle money $'+START_MONEY};
 const _dc2=drawCamp;drawCamp=function(){_dc2();$('#who').textContent='Skin: '+AR[save.pick].n+' · Loadout: '+(save.loadout.map(t=>U[t].n).join(', ')||'empty')+' · Spawn units from your barracks with $'+START_MONEY+' (Training Camp is set up for you)'};
 ui=function(t){$('#turn').textContent=t+' · Turn '+tc;$('#fl').textContent='Flags '+flags.filter(f=>f.o==='p').length+'/'+flags.length+(training?'':' · $'+bm);$('#end').disabled=turn!=='p'||over;if(turn!=='p')spawnSel=null;buildTray()};
-function spawnTiles(){const b=bld[0],o=[];if(!b)return o;for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){const x=b.x+dx,y=b.y+dy;if((!dx&&!dy)||x<0||y<0||x>=C||y>=R||walls.has(key(x,y))||flags.some(f=>f.x===x&&f.y===y)||at(x,y))continue;o.push([x,y])}return o}
+function spawnTiles(){const b=bld[0],o=[];if(!b)return o;for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){const x=b.x+dx,y=b.y+dy;if(Math.abs(dx)+Math.abs(dy)!==1||x<0||y<0||x>=C||y>=R||walls.has(key(x,y))||flags.some(f=>f.x===x&&f.y===y)||at(x,y))continue;o.push([x,y])}return o}
 function showSpawn(){reach={};if(spawnSel)spawnTiles().forEach(([x,y])=>reach[key(x,y)]=1)}
 function buildTray(){const tr=$('#tray');if(training||over||turn!=='p'||!bld.length){trayHide();return}
  tr.innerHTML='';tr.style.display='flex';
@@ -468,7 +470,7 @@ start=function(i){_st(i);lost=0;training=i===0;spawnSel=null;bm=START_MONEY;bld=
 let pf=[],prevT='p',dragging=null,dpath=[],dragged=false,skillMode=false,lastT=performance.now();
 const SKILL={r:{n:'Grenade',rg:3,cd:3,hit:(x,y)=>[[x,y,6],[x+1,y,3],[x-1,y,3],[x,y+1,3],[x,y-1,3]]},m:{n:'Rocket Salvo',rg:5,cd:4,hit:(x,y)=>[[x,y,10]]}};
 const busy=()=>units.some(u=>u.anim),tileAt=e=>{const r=cv.getBoundingClientRect();return[Math.floor((e.clientX-r.left)/r.width*C),Math.floor((e.clientY-r.top)/r.height*R)]};
-const blocked=(x,y,self)=>x<0||y<0||x>=C||y>=R||walls.has(key(x,y))||bld.some(b=>b.x===x&&b.y===y)||!canEnter(self,x,y)||(at(x,y)&&at(x,y)!==self&&!(self&&self.cls==='inf'&&at(x,y).bld&&at(x,y).team===self.team));
+const blocked=(x,y,self)=>x<0||y<0||x>=C||y>=R||walls.has(key(x,y))||bld.some(b=>b.x===x&&b.y===y)||!canEnter(self,x,y)||(at(x,y)&&at(x,y)!==self);
 function findPath(sx,sy,dx,dy,self){const q=[[sx,sy]],prev={};prev[key(sx,sy)]=null;
  while(q.length){const[x,y]=q.shift();if(x===dx&&y===dy){const p=[];let k=key(x,y);while(prev[k]){const[a,b]=k.split(',').map(Number);p.unshift([a,b]);k=prev[k]}return p}
   for(const[ax,ay]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+ax,ny=y+ay,nk=key(nx,ny);if(nk in prev||blocked(nx,ny,self))continue;prev[nk]=key(x,y);q.push([nx,ny])}}return null}
@@ -520,7 +522,7 @@ const _st4=start;start=function(i){_st4(i);prevT='p';skillMode=false;dragging=nu
 <script>
 let pend=null,baseSel=false,lastBm=120;
 SKILL.r={n:'Rifle Fire',rg:2,cd:0,pct:d=>d<=1?1:.5};SKILL.m={n:'Missile',rg:2,cd:0,pct:d=>1};
-doSkill=function(x,y){const u=sel,k=u&&SKILL[u.t];if(!u||!k||u.acted)return;const d=Math.max(Math.abs(x-u.x),Math.abs(y-u.y));
+doSkill=function(x,y){const u=sel,k=u&&SKILL[u.t];if(!u||!k||u.acted)return;const d=Math.abs(x-u.x)+Math.abs(y-u.y);
  if(d<1||d>k.rg){info('Out of range. Tap a red square.');return}const e=units.find(v=>v.team==='e'&&v.x===x&&v.y===y);if(!e){info('No enemy on that square.');return}
  const pc=k.pct(d),dm=Math.max(1,Math.round((u.dm+(u.t==='m'&&e.t==='t'?6:0))*pc));u.f=x>=u.x?1:-1;u.ang=Math.atan2(y-u.y,x-u.x);hurt(e,dm);
  for(let i=0;i<12;i++)pf.push({x:x*T+40,y:y*T+40,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,l:.5,c:i%2?'#ff9a1f':'#ffd34d'});
@@ -539,9 +541,9 @@ const _d4=draw;draw=function(){const dg=dragging;dragging=null;_d4();dragging=dg
  if(dragging&&dpath.length)drawArrow([[dragging.x,dragging.y],...dpath],dpath.length+'/'+dragging.mv,false);
  if(pend)drawArrow(pend.pts,(pend.pts.length-1)+'/'+pend.u.mv+' · click to confirm',true);
  if(baseSel&&bld[0])br(bld[0].x,bld[0].y,'#f2e6a0');
- if(skillMode&&sel&&units.includes(sel)&&SKILL[sel.t]){const k=SKILL[sel.t];for(let y=0;y<R;y++)for(let x=0;x<C;x++){const d=Math.max(Math.abs(x-sel.x),Math.abs(y-sel.y));if(d<1||d>k.rg||walls.has(key(x,y)))continue;
+ if(skillMode&&sel&&units.includes(sel)&&SKILL[sel.t]){const k=SKILL[sel.t];for(let y=0;y<R;y++)for(let x=0;x<C;x++){const d=Math.abs(x-sel.x)+Math.abs(y-sel.y);if(d<1||d>k.rg||walls.has(key(x,y)))continue;
   g.fillStyle='#e0382a55';g.fillRect(x*T+3,y*T+3,T-6,T-6);g.strokeStyle='#ff4a38';g.lineWidth=2;g.strokeRect(x*T+3.5,y*T+3.5,T-7,T-7);
-  const s=Math.round(k.pct(d)*100)+'%';g.font='700 18px Arial';g.textAlign='center';g.lineWidth=4;g.strokeStyle='#000';g.strokeText(s,x*T+40,y*T+22);g.fillStyle='#fff';g.fillText(s,x*T+40,y*T+22);
+  const target=tgtAt(x,y,'e','p'),s=target?'-'+calcDmg(sel,target,k.pct(d)):'—';g.font='700 18px Arial';g.textAlign='center';g.lineWidth=4;g.strokeStyle='#000';g.strokeText(s,x*T+40,y*T+22);g.fillStyle='#fff';g.fillText(s,x*T+40,y*T+22);
   if(units.some(v=>v.team==='e'&&v.x===x&&v.y===y))br(x,y,'#ff4a38')}}};
 cv.addEventListener('pointerdown',()=>{if(dragging)pend=null});
 cv.addEventListener('pointerup',()=>{const u=dragging;if(!u)return;dragging=null;if(dpath.length){pend={u,pts:[[u.x,u.y],...dpath]};info('Click the arrow to confirm the path, or click elsewhere to cancel.')}dpath=[]},true);
@@ -554,6 +556,8 @@ window.addEventListener('click',e=>{if(e.target!==cv)return;const stop=()=>{e.st
  if(b&&x===b.x&&y===b.y&&!training){baseSel=!baseSel;spawnSel=null;sel=null;skillMode=false;reach={};buildTray();info(baseSel?'Barracks ability: pick a unit to spawn within 1 tile.':'');stop();return}
  if(baseSel&&u0&&u0.team==='p'){baseSel=false;spawnSel=null;reach={};buildTray()}
  if(skillMode&&sel){if(u0&&u0.team==='p'&&u0!==sel){skillMode=false;reach={};return}stop();doSkill(x,y);return}
+ const capturable=sel&&units.includes(sel)&&sel.team==='p'&&!sel.moved&&(sel.tr||[]).includes('capture')?capTarget2(sel):null;
+ if(capturable&&x===capturable.x&&y===capturable.y){doCapture(sel,capturable);reach={};info('Outpost captured. Your unit stays on its tile.');check();stop();return}
  if(u0&&u0.team==='e'&&sel&&!spawnSel){info('Normal attacks are gone. Press the Skill button, then tap a red square.');stop();return}
  if(!spawnSel&&!baseSel&&sel&&!sel.moved&&!u0&&reach[key(x,y)]){const p=findPath(sel.x,sel.y,x,y,sel);pend={u:sel,pts:[[sel.x,sel.y],...(p||[[x,y]])]};info('Click the arrow to confirm the path, or click elsewhere to cancel.');stop()}},true);
 const _st5=start;start=function(i){_st5(i);pend=null;baseSel=false;lastBm=bm;if(!training)setTimeout(()=>info('Tap your barracks to spawn units, or select a unit to move and attack.'),0)};
@@ -566,7 +570,6 @@ doSkill=function(x,y){const u=sel,k=u&&SKILL[u.t];if(!u||!k||u.acted)return;cons
  const pc=k.pct(d),dm=Math.max(1,Math.round((u.dm+(u.t==='m'&&e.t==='t'?6:0))*pc));u.f=x>=u.x?1:-1;u.ang=Math.atan2(y-u.y,x-u.x);hurt(e,dm);
  for(let i=0;i<12;i++)pf.push({x:x*T+40,y:y*T+40,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,l:.5,c:i%2?'#ff9a1f':'#ffd34d'});
  u.acted=u.moved=true;skillMode=false;reach={};info(k.n+' hit for '+dm+' ('+Math.round(pc*100)+'%).');check()};
-draw=(0,eval)('('+draw.toString().replace('Math.max(Math.abs(x-sel.x),Math.abs(y-sel.y))','(Math.abs(x-sel.x)+Math.abs(y-sel.y))')+')');
 cv.addEventListener('pointerup',()=>{if(pend&&dragged)pend.drag=true},true);
 const _d5=draw;draw=function(){if(pend&&!pend.drag&&!busy()){const u=pend.u,pts=pend.pts,l=pts[pts.length-1];pend=null;startAnim(u,pts);u.f=l[0]>=u.x?1:-1;u.x=l[0];u.y=l[1];u.moved=true;reach={};sel=u;info('Moved. Press the Skill button to attack.')}_d5()};
 </script>
@@ -611,18 +614,16 @@ doSkill=function(x,y){const u=sel,k=u&&SKILL[u.t];if(!u||!k||u.acted||u.bld)retu
 function heal(b){let n=0;units.forEach(v=>{if(v.team===b.team&&v!==b&&!v.bld&&v.hp<v.max&&Math.abs(v.x-b.x)+Math.abs(v.y-b.y)<=2){const h=Math.min(5,v.max-v.hp);v.hp+=h;n++;fl.push({x:v.x,y:v.y,t:1,s:'+'+h})}});return n}
 const _sbo=sb.onclick;sb.onclick=function(){if(sel&&sel.bld){if(sel.acted||sel.cd>0||busy())return;const n=heal(sel);if(!n){info('No wounded allies within 2 tiles.');return}sel.acted=true;sel.cd=2;info('Supply Cargo healed '+n+' unit(s).');return}_sbo.call(sb)};
 updateSkill=function(){const u=sel,k=u&&SKILL[u.t];if(!u||!k||u.team!=='p'||turn!=='p'||over||!units.includes(u)){sb.style.display='none';sbT='';return}
- const txt=k.n+(u.cd>0?' ('+u.cd+')':''),dis=!!u.acted||u.cd>0;sb.style.display='';if(sbT!==txt+dis+skillMode){sbT=txt+dis+skillMode;sb.textContent=txt;sb.disabled=dis;sb.className=skillMode?'alt':'back'}};
-const cb=document.createElement('button');cb.className='back';cb.textContent='Capture';cb.style.display='none';$('#hud').insertBefore(cb,sb);
-const capTarget=u=>units.find(v=>v.bld&&v.team!==u.team&&Math.max(Math.abs(v.x-u.x),Math.abs(v.y-u.y))<=1);
-function updateCap(){const u=sel;if(!u||u.team!=='p'||!(u.tr||[]).includes('capture')||turn!=='p'||over||!units.includes(u)){cb.style.display='none';return}cb.style.display='';cb.disabled=!!u.moved||!capTarget(u)}
-cb.onclick=()=>{const u=sel;if(!u||busy()||u.moved)return;const b=capTarget(u);if(!b)return;b.team='p';b.cd=0;b.acted=false;u.moved=true;fl.push({x:b.x,y:b.y,t:1,s:'Captured!'});reach={};info('Outpost captured! It now heals your nearby units.');check()};
+ const txt=k.n,dis=!!u.acted||u.cd>0;sb.style.display='';if(sbT!==txt+dis+skillMode){sbT=txt+dis+skillMode;sb.textContent=txt;sb.disabled=dis;sb.className=skillMode?'alt':'back'}};
+const capTarget=u=>units.find(v=>v.bld&&v.team!==u.team&&Math.abs(v.x-u.x)+Math.abs(v.y-u.y)<=1);
+function updateCap(){}
 const _u3=unit;unit=function(g2,x,y,type,team,f,ang){if(type!=='o')return _u3(g2,x,y,type,team,f,ang);const k=UC[team];g2.save();g2.translate(x,y);
  g2.fillStyle='#3b3428';g2.fillRect(-28,-26,56,52);g2.fillStyle='#6b5d3a';g2.fillRect(-26,-24,52,48);g2.strokeStyle='#4a3f26';g2.lineWidth=2;for(let i=-1;i<=1;i++){g2.beginPath();g2.moveTo(-26,i*16);g2.lineTo(26,i*16);g2.stroke()}
  g2.fillStyle=k.v;g2.fillRect(-18,-16,36,32);g2.fillStyle=k.v2;g2.fillRect(-18,-2,36,4);g2.fillStyle=k.a;g2.fillRect(-26,-24,8,48);g2.fillStyle='#f3ead0';g2.fillRect(-4,-8,8,16);g2.fillRect(-8,-4,16,8);g2.restore()};
 const _ai2=ai;ai=function(e){if(e.bld){if(e.cd>0)e.cd--;else if(heal(e))e.cd=2;return}
- if((e.tr||[]).includes('capture')){const b=units.find(v=>v.bld&&v.team==='p'&&Math.max(Math.abs(v.x-e.x),Math.abs(v.y-e.y))<=1);if(b){b.team='e';b.cd=0;e.moved=true;fl.push({x:b.x,y:b.y,t:1,s:'Captured!'});return}}_ai2(e)};
+ if((e.tr||[]).includes('capture')){const b=units.find(v=>v.bld&&v.team==='p'&&Math.abs(v.x-e.x)+Math.abs(v.y-e.y)<=1);if(b){b.team='e';b.cd=0;e.moved=true;fl.push({x:b.x,y:b.y,t:1,s:'Captured!'});return}}_ai2(e)};
 check=function(){ui(turn==='p'?'Your turn':'Enemy turn');const E=units.filter(u=>u.team==='e'),P=units.filter(u=>u.team==='p'&&!u.bld).length;
- if(!E.length||(goalB&&!E.some(u=>u.bld)))return fin(true);if(!P&&!canSpawn())return fin(false);return false};
+ if(goalB&&!E.some(u=>u.bld))return fin(true);if(!P&&!canSpawn())return fin(false);return false};
 const _fin=fin;fin=function(w){const r=_fin(w);if(w){save.credits+=100;store();$('#oS').textContent+='  +100 credits'}return r};
 const _ui3=ui;ui=function(t){_ui3(t);const f=$('#fl');f.textContent=f.textContent.replace('Flags','Outposts')};
 function drawStore(){$('#credits').textContent='Credits: '+save.credits+' (earn 100 per victory)';const b=$('#shop');b.innerHTML='';
@@ -649,7 +650,7 @@ const _st6=start;start=function(i){const L2=LV[i];C=L2.m[0].length;R=L2.m.length
  units.forEach(u=>{const b=U[u.t];u.cls=b.cls;u.armor=b.armor||0;u.ap=b.ap||0;u.tr=(TR[u.t]||[]).slice()});
  flags=flags.map(f=>{const o={t:'o',team:'e',x:f.x,y:f.y,hp:30,max:30,mv:0,rg:0,dm:0,moved:false,acted:false,f:1,cls:'bld',armor:2,ap:0,tr:[],bld:true,cd:0};units.push(o);return{x:f.x,y:f.y,u:o,get o(){return this.u.team}}});
  goalB=flags.length>0;if(bld[0])camY=Math.max(0,bld[0].y*T-200);clampCam();ui('Your turn');
- if(i===0)setTimeout(()=>info('Training Camp: capture or destroy both enemy outposts. Move a rifleman next to one and press Capture.'),0)};
+ if(i===0)setTimeout(()=>info('Training Camp: capture or destroy both enemy outposts. Select a rifleman, then click an adjacent outpost outlined in yellow to capture it.'),0)};
 </script>
 <script>
 let fo=new Set();
@@ -659,12 +660,12 @@ const seenBy=(team,v)=>{if(v.bld||v.team===team)return true;const lim=fo.has(key
  return units.some(o=>o.team===team&&Math.abs(o.x-v.x)+Math.abs(o.y-v.y)<=Math.min(lim,SIGHT(o)))||(team==='p'&&bld[0]&&Math.abs(bld[0].x-v.x)+Math.abs(bld[0].y-v.y)<=Math.min(lim,3))};
 const tileSeen=(x,y)=>units.some(o=>o.team==='p'&&Math.abs(o.x-x)+Math.abs(o.y-y)<=SIGHT(o))||(bld[0]&&Math.abs(bld[0].x-x)+Math.abs(bld[0].y-y)<=3);
 const canEnter=(s,x,y)=>!s||!(s.cls==='veh'||s.cls==='tank')||!(hgt(x,y)>0||sh.has(key(x,y)));
-LV.forEach(l=>{l.m=l.m.map((r,y)=>[...r].map((ch,x)=>ch==='.'&&x>=2&&x<r.length-2&&(x*7+y*13)%9===0?'T':ch).join(''))});
+LV.forEach((l,i)=>{if(i===5)return;l.m=l.m.map((r,y)=>[...r].map((ch,x)=>ch==='.'&&x>=2&&x<r.length-2&&(x*7+y*13)%9===0?'T':ch).join(''))});
 bfs=function(u){const out={},q=[[u.x,u.y,0]],seen=new Set([key(u.x,u.y)]);
  while(q.length){const[x,y,d]=q.shift();if(d>=u.mv)continue;for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,k=key(nx,ny);if(seen.has(k)||blocked(nx,ny,u))continue;seen.add(k);out[k]=1;q.push([nx,ny,d+1])}}return out};
 const _sp=spawnTiles;spawnTiles=function(){return _sp().filter(([x,y])=>!spawnSel||canEnter({cls:U[spawnSel].cls},x,y))};
-function calcDmg(a,d,pc){let m=1;if(a.ap>=4)m=d.cls==='inf'?.5:d.cls==='bld'?1:1.5;else if(a.cls&&a.cls!=='inf'&&d.cls==='inf')m=1.5;
- const cov=(sh.has(key(d.x,d.y))||d.inB)?.6:1,red=Math.max(0,(d.armor||0)-(a.ap||0));return Math.max(1,Math.round(a.dm*pc*m*cov-red))}
+function calcDmg(a,d,pc,fromX=a.x,fromY=a.y){let m=1;if(a.ap>=4)m=d.cls==='inf'?.5:d.cls==='bld'?1:1.5;else if(a.cls&&a.cls!=='inf'&&d.cls==='inf')m=1.5;
+ const ha=hgt(fromX,fromY),hd=hgt(d.x,d.y),hv=ha>hd?1.25:ha<hd?.75:1,cov=(sh.has(key(d.x,d.y))||d.inB)?.6:1,red=Math.max(0,(d.armor||0)-(a.ap||0));return Math.max(1,Math.round(a.dm*pc*m*hv*cov-red))}
 function tgtAt(x,y,team,viewer){const c=units.filter(v=>v.team===team&&v.x===x&&v.y===y&&(v.bld||seenBy(viewer,v)));return c.find(v=>!v.bld)||c[0]}
 doSkill=function(x,y){const u=sel,k=u&&SKILL[u.t];if(!u||!k||u.acted||u.bld)return;const d=Math.abs(x-u.x)+Math.abs(y-u.y);
  if(d<1||d>k.rg){info('Out of range. Tap a red square.');return}if(hgt(x,y)>hgt(u.x,u.y)){info('You cannot fire up a hill.');return}
@@ -672,34 +673,34 @@ doSkill=function(x,y){const u=sel,k=u&&SKILL[u.t];if(!u||!k||u.acted||u.bld)retu
  const pc=k.pct(d),dm=calcDmg(u,e,pc);u.f=x>=u.x?1:-1;u.ang=Math.atan2(y-u.y,x-u.x);hurt(e,dm);
  for(let i=0;i<12;i++)pf.push({x:x*T+40,y:y*T+40,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,l:.5,c:i%2?'#ff9a1f':'#ffd34d'});
  u.acted=u.moved=true;skillMode=false;reach={};info(k.n+' hit for '+dm+' ('+Math.round(pc*100)+'% power).');check()};
-const capTarget2=u=>units.find(v=>v.bld&&v.team!==u.team&&Math.max(Math.abs(v.x-u.x),Math.abs(v.y-u.y))<=1&&!units.some(w=>w!==v&&w.x===v.x&&w.y===v.y));
-function doCapture(u,b){const sx=u.x,sy=u.y;b.team=u.team;b.cd=0;b.acted=false;u.f=b.x>=sx?1:-1;u.x=b.x;u.y=b.y;u.moved=true;units=units.filter(v=>v!==b);units.push(b);u.inB=b;startAnim(u,[[sx,sy],[b.x,b.y]]);fl.push({x:b.x,y:b.y,t:1,s:'Captured!'})}
-function syncGar(){units.forEach(u=>{if(u.bld)return;if(u.inB&&(u.x!==u.inB.x||u.y!==u.inB.y||!units.includes(u.inB)))u.inB=null;
- if(!u.inB){const b=units.find(v=>v.bld&&v.x===u.x&&v.y===u.y&&v.team===u.team);if(b){u.inB=b;units=units.filter(v=>v!==b);units.push(b)}}})}
-const sup=document.createElement('button');sup.className='back';sup.textContent='Supply Cargo';sup.style.display='none';$('#hud').insertBefore(sup,cb);
+const capTarget2=u=>units.find(v=>v.bld&&v.team!==u.team&&Math.abs(v.x-u.x)+Math.abs(v.y-u.y)<=1&&!units.some(w=>w!==v&&w.x===v.x&&w.y===v.y));
+function doCapture(u,b){b.team=u.team;b.cd=0;b.acted=false;u.moved=true;fl.push({x:b.x,y:b.y,t:1,s:'Captured!'})}
+function syncGar(){units.forEach(u=>{if(!u.bld)u.inB=null})}
+const sup=document.createElement('button');sup.className='back';sup.textContent='Supply Cargo';sup.style.display='none';$('#hud').insertBefore(sup,sb);
 sup.onclick=()=>{const b=sel&&sel.inB;if(!b||b.acted||b.cd>0||busy())return;const n=heal(b);if(!n){info('No wounded allies within 2 tiles.');return}b.acted=true;b.cd=2;info('Supply Cargo healed '+n+' unit(s).')};
-updateCap=function(){const u=sel;if(!u||u.team!=='p'||turn!=='p'||over||!units.includes(u)){cb.style.display='none';sup.style.display='none';return}
- if((u.tr||[]).includes('capture')){cb.style.display='';cb.disabled=!!u.moved||!capTarget2(u)}else cb.style.display='none';
+updateCap=function(){const u=sel;if(!u||u.team!=='p'||turn!=='p'||over||!units.includes(u)){sup.style.display='none';return}
  if(!u.bld&&u.inB){const b=u.inB;sup.style.display='';sup.disabled=!!b.acted||b.cd>0;sup.textContent='Supply Cargo'+(b.cd>0?' ('+b.cd+')':'')}else sup.style.display='none'};
-cb.onclick=()=>{const u=sel;if(!u||busy()||u.moved)return;const b=capTarget2(u);if(!b)return;doCapture(u,b);reach={};info('Moving into the outpost to capture it. The unit stays inside and can still attack.');check()};
 ai=function(e){if(e.bld){if(e.cd>0)e.cd--;else if(heal(e))e.cd=2;return}
  if((e.tr||[]).includes('capture')&&!e.moved){const b=capTarget2(e);if(b){doCapture(e,b);return}}
  const sx=e.x,sy=e.y,rc=bfs(e);rc[key(e.x,e.y)]=1;const vp=units.filter(v=>v.team==='p'&&seenBy('e',v));let best=null,bs=-1e9;
- for(const k in rc){const[x,y]=k.split(',').map(Number);for(const p of vp){const d=Math.abs(x-p.x)+Math.abs(y-p.y);if(d<1||d>e.rg||hgt(p.x,p.y)>hgt(x,y))continue;const dm=calcDmg(e,p,1),s=(dm>=p.hp?100:0)+dm+d*.3;if(s>bs){bs=s;best={x,y,p}}}}
+ for(const k in rc){const[x,y]=k.split(',').map(Number);for(const p of vp){const d=Math.abs(x-p.x)+Math.abs(y-p.y);if(d<1||d>e.rg||hgt(p.x,p.y)>hgt(x,y))continue;const dm=calcDmg(e,p,1,x,y),s=(dm>=p.hp?100:0)+dm+d*.3;if(s>bs){bs=s;best={x,y,p}}}}
  if(best){e.x=best.x;e.y=best.y;e.f=best.p.x>=e.x?1:-1}
  else{const goals=vp.concat(units.filter(v=>v.bld&&v.team==='p'),bld[0]?[bld[0]]:[]).sort((a,b)=>(Math.abs(a.x-e.x)+Math.abs(a.y-e.y))-(Math.abs(b.x-e.x)+Math.abs(b.y-e.y)));
   if(goals.length){const t=goals[0];let bk=null,bd=1e9;for(const k in rc){const[x,y]=k.split(',').map(Number),d=Math.abs(x-t.x)+Math.abs(y-t.y);if(d<bd){bd=d;bk=[x,y]}}if(bk){e.f=bk[0]>=e.x?1:-1;e.x=bk[0];e.y=bk[1]}}}
- if((e.x!==sx||e.y!==sy)&&seenBy('p',e)){const p=findPath(sx,sy,e.x,e.y,e);startAnim(e,[[sx,sy],...(p||[[e.x,e.y]])])}
- if(best){attack(e,best.p);return check()}};
+
+  if((e.x!==sx||e.y!==sy)&&seenBy('p',e)){const p=findPath(sx,sy,e.x,e.y,e);startAnim(e,[[sx,sy],...(p||[[e.x,e.y]])])}
+if(best){attack(e,best.p);return check()}};
 const _terr=terr;terr=function(){_terr();fo.forEach(k=>{const[x,y]=k.split(',').map(Number),px=x*T,py=y*T;g.fillStyle='#1f4a22cc';[[16,18,15],[50,16,16],[30,40,17],[58,52,14],[14,58,13]].forEach(([a,b,r])=>{g.beginPath();g.arc(px+a,py+b,r,0,7);g.fill()});
  g.fillStyle='#3f7a3a99';[[14,16,8],[48,14,8],[28,38,9]].forEach(([a,b,r])=>{g.beginPath();g.arc(px+a,py+b,r,0,7);g.fill()})})};
 const _d8=draw;draw=function(){syncGar();const all=units,hid=all.filter(u=>u.team==='e'&&!u.bld&&!seenBy('p',u));hid.forEach(u=>{delete u.anim;u._lx=u.x;u._ly=u.y});
  const vis=all.filter(u=>!hid.includes(u));units=vis.filter(u=>u.bld).concat(vis.filter(u=>!u.bld));try{_d8()}finally{units=all}
  g.save();g.translate(-Math.round(camX),-Math.round(camY));
  for(let y=0;y<R;y++)for(let x=0;x<C;x++){if(!tileSeen(x,y)){g.fillStyle='rgba(6,12,6,.4)';g.fillRect(x*T,y*T,T,T)}}
+ if(sel&&units.includes(sel)&&sel.team==='p'&&turn==='p'&&!over&&!sel.moved&&(sel.tr||[]).includes('capture')){const target=capTarget2(sel);if(target)br(target.x,target.y,'#fff2b0')}
  if(skillMode&&sel&&!sel.bld&&SKILL[sel.t]){const k=SKILL[sel.t];for(let y=0;y<R;y++)for(let x=0;x<C;x++){const d=Math.abs(x-sel.x)+Math.abs(y-sel.y);if(d<1||d>k.rg||hgt(x,y)<=hgt(sel.x,sel.y))continue;
   g.fillStyle='#1a120acc';g.fillRect(x*T+3,y*T+3,T-6,T-6);g.strokeStyle='#ff4a38';g.lineWidth=3;g.beginPath();g.moveTo(x*T+22,y*T+22);g.lineTo(x*T+58,y*T+58);g.moveTo(x*T+58,y*T+22);g.lineTo(x*T+22,y*T+58);g.stroke()}}
  g.restore()};
 const _st7=start;start=function(i){fo=new Set();_st7(i);LV[i].m.forEach((r,y)=>[...r].forEach((ch,x)=>{if(ch==='T')fo.add(key(x,y))}));
- setTimeout(()=>info(i===0?'Training Camp: capture or destroy both outposts. Move a rifleman next to one and press Capture. Enemy units stay hidden until you see them.':'Fog of war: enemy units stay hidden until one of your units gets close enough to see them.'),1)};
+ if(LV[i].test){bld=[];bm=0;units.push(mk('r',4,3));start0=1;ui('Your turn')}
+ setTimeout(()=>info(i===5?'Zero Zone: move your Rifleman next to the enemy outpost, select the Rifleman, then click the yellow outlined outpost to capture it. The unit stays on its tile.':i===0?'Training Camp: capture or destroy both outposts. Select a rifleman, then click an adjacent outpost outlined in yellow to capture it. Enemy units stay hidden until you see them.':'Fog of war: enemy units stay hidden until one of your units gets close enough to see them.'),1)};
 </script></body></html>
