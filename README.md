@@ -19,3 +19,8 @@ Then open <http://localhost:8000>. Press Ctrl+C in the terminal to stop the serv
 - `game.js` contains the game logic.
 - `game-data.json` contains unit, squad, and level data.
 - `bootstrap.js` loads the JSON before starting the game.
+- `.github/workflows/pages.yml` publishes the game to GitHub Pages when `main` changes.
+
+## Publish the website
+
+In the repository's **Settings → Pages**, set **Build and deployment → Source** to **GitHub Actions**. After that, each push to `main` deploys the playable game to <https://fivedextor.github.io/void_conquerer/>.
