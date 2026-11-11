@@ -52,12 +52,12 @@
     },
     "o": {
       "n": "Outpost",
-      "hp": 120,
+      "hp": 200,
       "mv": 0,
       "rg": 0,
       "dm": 0,
       "ap": 0,
-      "armor": 2,
+      "armor": 4,
       "cls": "bld"
     }
   },
