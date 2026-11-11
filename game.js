@@ -475,8 +475,8 @@ const TRTXT=t=>{const u=U[t];return CLS[u.cls]+' · Armor '+u.armor+' · AP '+u.
 
 mk=function(t,x,y){const b=U[t],a=AR[save.pick];return{t,team:'p',x,y,hp:b.hp+a.hp,max:b.hp+a.hp,mv:b.mv+a.mv,rg:b.rg,dm:b.dm+a.dm,ap:b.ap||0,armor:b.armor||0,cls:b.cls,tr:(TR[t]||[]).slice(),moved:false,acted:false,f:1}};
 function calcDmg(a,d,pc){let m=1;if(a.ap>=4)m=d.cls==='inf'?.5:d.cls==='bld'?1:1.5;else if(a.cls&&a.cls!=='inf'&&d.cls==='inf')m=1.5;
- const ha=(hm[a.y]&&hm[a.y][a.x])|0,hd=(hm[d.y]&&hm[d.y][d.x])|0,hv=ha>hd?1.25:ha<hd?.75:1,cov=sh.has(key(d.x,d.y))?.6:1,red=Math.max(0,(d.armor||0)-(a.ap||0));
- return Math.max(1,Math.round(a.dm*pc*m*hv*cov-red))}
+ const ha=hgt(a.x,a.y),hd=hgt(d.x,d.y),heightDefense=hd>ha?.8:1,covered=fo.has(key(d.x,d.y))||sh.has(key(d.x,d.y))||d.inB,terrainDefense=covered?.8:1,armorReduction=2*Math.max(0,(d.armor||0)-(a.ap||0));
+ return Math.max(1,Math.round(Math.max(0,a.dm*pc-armorReduction)*terrainDefense*heightDefense*m))}
 attack=function(a,d){const dm=calcDmg(a,d,1);d.hp-=dm;a.f=d.x>=a.x?1:-1;a.ang=Math.atan2(d.y-a.y,d.x-a.x);fl.push({x:d.x,y:d.y,t:1,s:'-'+dm});
  for(let i=0;i<7;i++)pf.push({x:d.x*T+40,y:d.y*T+36,vx:(Math.random()-.5)*6,vy:(Math.random()-.5)*6,l:.4,c:'#ffd34d'});if(d.hp<=0){if(d.team==='p')lost++;units=units.filter(u=>u!==d)}};
 doSkill=function(x,y){const u=sel,k=u&&SKILL[u.t];if(!u||!k||u.acted||u.bld)return;const d=Math.abs(x-u.x)+Math.abs(y-u.y);
@@ -538,7 +538,7 @@ bfs=function(u){const out={},q=[[u.x,u.y,0]],seen=new Set([key(u.x,u.y)]);
  while(q.length){const[x,y,d]=q.shift();if(d>=u.mv)continue;for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,k=key(nx,ny);if(seen.has(k)||blocked(nx,ny,u))continue;seen.add(k);out[k]=1;q.push([nx,ny,d+1])}}return out};
 const _sp=spawnTiles;spawnTiles=function(){return _sp().filter(([x,y])=>!spawnSel||canEnter({cls:U[spawnSel].cls},x,y))};
 function calcDmg(a,d,pc,fromX=a.x,fromY=a.y){let m=1;if(a.ap>=4)m=d.cls==='inf'?.5:d.cls==='bld'?1:1.5;else if(a.cls&&a.cls!=='inf'&&d.cls==='inf')m=1.5;
- const ha=hgt(fromX,fromY),hd=hgt(d.x,d.y),hv=ha>hd?1.25:ha<hd?.75:1,cov=(sh.has(key(d.x,d.y))||d.inB)?.6:1,red=Math.max(0,(d.armor||0)-(a.ap||0));return Math.max(1,Math.round(a.dm*pc*m*hv*cov-red))}
+ const ha=hgt(fromX,fromY),hd=hgt(d.x,d.y),heightDefense=hd>ha?.8:1,covered=fo.has(key(d.x,d.y))||sh.has(key(d.x,d.y))||d.inB,terrainDefense=covered?.8:1,armorReduction=2*Math.max(0,(d.armor||0)-(a.ap||0));return Math.max(1,Math.round(Math.max(0,a.dm*pc-armorReduction)*terrainDefense*heightDefense*m))}
 function tgtAt(x,y,team,viewer){const c=units.filter(v=>v.team===team&&v.x===x&&v.y===y&&(v.bld||seenBy(viewer,v)));return c.find(v=>!v.bld)||c[0]}
 doSkill=function(x,y){const u=sel,k=u&&SKILL[u.t];if(!u||!k||u.acted||u.bld)return;const d=Math.abs(x-u.x)+Math.abs(y-u.y);
  if(d<1||d>k.rg){info('Out of range. Tap a red square.');return}if(!canFireHeight(u,x,y)){info('The slope blocks that shot.');return}
